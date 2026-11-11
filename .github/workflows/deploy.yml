@@ -11,6 +11,11 @@ on:
   schedule:
     - cron: "17 * * * *"
   workflow_dispatch:
+    inputs:
+      only_if_new:
+        description: "Rebuild only when SpindleLabs' main has moved on (what clock.yml asks for)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -28,11 +33,14 @@ jobs:
       stale: ${{ steps.check.outputs.stale }}
     steps:
       - id: check
+        env:
+          EVENT: ${{ github.event_name }}
+          ONLY_IF_NEW: ${{ inputs.only_if_new }}
         run: |
           sha=$(git ls-remote https://github.com/Panosolid/SpindleLabs refs/heads/main | cut -f1)
           live=$(curl -fsS https://panosolid.github.io/build-sha.txt || true)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          if [ "$sha" = "$live" ] && [ "${{ github.event_name }}" = schedule ]; then
+          if [ "$sha" = "$live" ] && { [ "$EVENT" = schedule ] || [ "$ONLY_IF_NEW" = true ]; }; then
             echo "stale=false" >> "$GITHUB_OUTPUT"
           else
             echo "stale=true" >> "$GITHUB_OUTPUT"

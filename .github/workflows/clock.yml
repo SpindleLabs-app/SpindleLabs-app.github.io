@@ -1,0 +1,37 @@
+name: Hourly clock
+
+# GitHub starts this repo's scheduled runs hours late or not at all (deploy.yml's
+# own hourly schedule ran at 06:14 and then 14:27 UTC on 2026-11-11), so the
+# mirror fell behind. One clock run at a time starts "Publish the app" (which
+# rebuilds only when SpindleLabs' main has moved on), sleeps 50 minutes, then
+# starts the next clock run with workflow_dispatch, which GitHub starts within
+# seconds. The hourly schedule below only restarts a clock that stopped: while
+# a clock runs, a newer run waits in the group and GitHub keeps only the newest
+# waiting one, so there is never more than one clock.
+on:
+  schedule:
+    - cron: "41 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: mirror-clock
+  cancel-in-progress: false
+
+jobs:
+  clock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    permissions:
+      # Starts the publish run and the next clock run.
+      actions: write
+    steps:
+      - name: Start a publish check, sleep, start the next clock run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh workflow run deploy.yml -R "$REPO" --ref main -f only_if_new=true || echo "Could not start the publish check this time."
+          sleep 3000
+          gh workflow run clock.yml -R "$REPO" --ref main
