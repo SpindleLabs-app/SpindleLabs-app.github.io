@@ -55,6 +55,11 @@ jobs:
       - run: npm ci
       - run: npm run build
         working-directory: apps/fission
+      # The moderators' review page (community C5b), at /review/, for a moderator with no terminal. It is plain
+      # files written from SpindleLabs' supabase/review, never part of the app's build; the page holds no secret
+      # and the moderation function checks every request against its list. Skipped for a main without it.
+      - run: |
+          if [ -f supabase/review/build.mjs ]; then node supabase/review/build.mjs apps/fission/dist/review; fi
       # The CNAME names spindlelabs.app, which this address must not claim.
       - run: |
           rm -f apps/fission/dist/CNAME
